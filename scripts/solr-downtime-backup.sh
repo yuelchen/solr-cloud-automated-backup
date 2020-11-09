@@ -97,7 +97,6 @@ function sshCmdWithPem() {
 
 # main method function to execute logic
 function mainMethod() {
-  
   # stop solr process on each node
   logInfo "Starting solr backup with downtime"
   downtimeStart=$SECONDS
