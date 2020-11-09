@@ -97,7 +97,10 @@ function sshCmdWithPem() {
 
 # main method function to execute logic
 function mainMethod() {
+  
   # stop solr process on each node
+  logInfo "Starting solr backup with downtime"
+  downtimeStart=$SECONDS
   stopSolrNodes
   
   # execute back-up steps
@@ -105,10 +108,12 @@ function mainMethod() {
   
   # start solr process on each node
   startSolrNodes
+  elapsedDowntime=$(( SECONDS - downtimeStart ))
   
   # upload to Amazon S3 if applicable (both bucket and prefix needs to be provided)
   determineTarred
   uploadSolrBackup
+  logInfo "Completed solr backup with a downtime of '${elapsedDowntime}' seconds - tarred time and AWS S3 upload time not included"
 }
 
 # print help method for outputting instructions to console
