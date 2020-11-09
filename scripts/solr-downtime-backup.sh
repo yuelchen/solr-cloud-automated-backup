@@ -38,47 +38,80 @@ declare tarred=false
 
 # DEBUG logger function
 function logDebug() {
-  echo "$(date +%Y-%m-%d' '%H:%M:%S' '%Z) [DEBUG] $1" >> "${logFileLocation}"
+  echo "$(date +%Y-%m-%d' '%H:%M:%S' '%Z) [DEBUG] $1" #>> "${logFileLocation}"
 }
 
 # INFO logger function
 function logInfo() {
-  echo "$(date +%Y-%m-%d' '%H:%M:%S' '%Z) [INFO] $1" >> "${logFileLocation}"
+  echo "$(date +%Y-%m-%d' '%H:%M:%S' '%Z) [INFO] $1" #>> "${logFileLocation}"
 }
 
 # WARN logger function
 function logWarn() {
-  echo "$(date +%Y-%m-%d' '%H:%M:%S' '%Z) [WARN] $1" >> "${logFileLocation}"
+  echo "$(date +%Y-%m-%d' '%H:%M:%S' '%Z) [WARN] $1" #>> "${logFileLocation}"
 }
 
 # ERROR logger function
 function logError() {
-  echo "$(date +%Y-%m-%d' '%H:%M:%S' '%Z) [ERROR] $1" >> "${logFileLocation}"
+  echo "$(date +%Y-%m-%d' '%H:%M:%S' '%Z) [ERROR] $1" #>> "${logFileLocation}"
 }
 
-# stop all solr process on each solr node specified in array above
-function stopSolrNodes() {
+# retrieve setSolrCores() {
+  solrNodeStatusUrl="https://${1}/${solrPort}/solr/admin/cores?action=STATUS&wt=json"
+  logDebug "CMD: curl -w 'httpcode=%{httpcode}' --insecure \"${solrNodeStatusUrl}\" 2>/dev/null"
   
+  response=$(curl -w 'httpcode=%{httpcode}' --insecure \"${solrNodeStatusUrl}\" 2>/dev/null)
+  responseCode=`echo ${response} | sed -e 's/.*\httpcode=//'`
+  response=`echo ${response} | sed -e "s/ httpcode=${responseCode}$//"`
+  
+  if [ "$responseCode" -eq 200 ]
+  then
+    logInfo "Response Info '${responseCode}': Retrieved status response for solr node '${1}'"
+    cores=`echo ${response} | jq -r '.status[].name'`
+    solrNodeCores=($cores)
+    
+    logDebug "Retrieved cores '${solrNodeCores[*]}' for solr node '${1}'"
+  else
+    logError "Response code '${responseCode}': Unable to retrieve status response for Solr node '${1}'"
+  fi
 }
 
 # backup indexes on each solr node and download collection config
 function backupSolrIndexes() {
-
-}
-
-# start all solr processes on each solr node specified in array above
-function startSolrNodes() {
-
+  for solrNode in "${solrNodes[@]}"
+  do
+    logInfo "Retrieving solr cores for solr node '${solrNode}'"
+    setSolrCores ${solrNode}
+    
+    for solrCore in "${solrNodeCores[@]}"
+    do
+      logInfo "Backing up solr core '${solrCore}' on solr node '${solrNode}'"
+      
+    done
+  done
 }
 
 # tars the solr backup if applicable
 function determineTarred() {
-
+  if ${tarred}
+  then
+    outputDirname=$(dirname ${outputLocation})
+    outputBasename=$(basename ${outputLocation})
+    logInfo "Attempting to tar '${outputLocation}' to destination '${outputBasename}/${outputDirname}.tgz'"
+  else 
+    logDebug "Skipping tar operation due to no specification for tarring"
+  fi
 }
 
 # upload solr backup if applicable
 function uploadSolrBackup() {
-
+  if [[ ! -z "${uploadBucket}" ]] && [[ ! -z "${uploadPrefix}" ]]
+  then
+    outputBasename=$(basename ${outputLocation})
+    logInfo "Attempting to upload backup file '${outputLocation}' to 's3://${uploadBucket}/${uploadPrefix}/${outputBasename}'"
+  else
+    logError "Unable to upload backup to AWS due to missing bucket '${uploadBucket}' or prefix '${uploadPrefix}'"
+  fi
 }
 
 # function for ssh without pem file and command
@@ -97,16 +130,11 @@ function sshCmdWithPem() {
 
 # main method function to execute logic
 function mainMethod() {
-  # stop solr process on each node
   logInfo "Starting solr backup with downtime"
   downtimeStart=$SECONDS
-  stopSolrNodes
   
   # execute back-up steps
   backupSolrIndexes
-  
-  # start solr process on each node
-  startSolrNodes
   elapsedDowntime=$(( SECONDS - downtimeStart ))
   
   # upload to Amazon S3 if applicable (both bucket and prefix needs to be provided)
