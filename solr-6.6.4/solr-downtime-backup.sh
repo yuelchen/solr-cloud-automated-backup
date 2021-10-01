@@ -145,7 +145,12 @@ function mainMethod() {
 
 # print help method for outputting instructions to console
 function printHelp() {
-
+  echo -e "-output\t\tThe desired output location; default as /home/ec2-user/<solr-collection-name>-backup-<date>";
+  echo -e "-tarred\t\tBoolean option for whether or not backup file should be compressed; default as true.";
+  echo -e "-bucket\t\tThe upload Amazon S3 bucket name.";
+  echo -e "-prefix\t\tThe upload Amazon S3 object prefix.";
+  echo -e "-solrPem\t\tThe PEM file for SSH from local instance to other Solr nodes.";
+  echo -e "-zooPem\t\tThe PEM file for SSH from local instance to other Zookeeper nodes.";
 }
 
 # options which can be passed when invoking script
