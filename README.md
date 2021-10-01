@@ -1,4 +1,4 @@
-# automated-solr-cloud-backup
+# solr-cloud-automated-backup
 An automated backup script to take a "snapshot" of a Solr-cloud collection on Linux instance. 
 
 # What is Solr?
